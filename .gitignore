@@ -1,0 +1,8 @@
+﻿################################################################################
+# Este arquivo .gitignore foi criado automaticamente pelo Microsoft(R) Visual Studio.
+################################################################################
+
+/FastAPI - Ex/models/__pycache__
+/FastAPI - Ex/__pycache__
+/.vs
+/FastAPI - Ex/FastAPI
