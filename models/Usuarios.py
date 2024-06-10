@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, Field
 
 class Usuarios(BaseModel):
@@ -12,6 +13,6 @@ class Usuarios(BaseModel):
     Ativo              : bool
     CodigoGrupoUsuario : int
     InseridoPor        : int
-    InseridoEm         : str 
+    InseridoEm         : datetime 
     ModificadoPor      : int
-    ModificadoEm       : str | None = None
+    ModificadoEm       : datetime | None = None
