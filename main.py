@@ -1,11 +1,11 @@
 import os
 import pyodbc
-import struct
 from fastapi import FastAPI, HTTPException
 import uvicorn
 from models.Usuarios import Usuarios
 from http import HTTPStatus
 import pandas as pd
+from Controllers.PadraoController import *
 
 # Atualize a string de conexão com a nova senha
 connection_string = os.environ["AZURE_SQL_CONNECTIONSTRING"]
@@ -21,7 +21,7 @@ def get_conn():
         print("Erro ao conectar ao banco de dados 01:", e)
         return None
 
-@app.get("/Usuarios_all")
+@app.get("/UsuariosAll")
 def get_Usuarios():
     usuarios = []
     conn = get_conn()
@@ -44,23 +44,31 @@ def get_Usuarios():
             record = pd.read_sql(comando_sql, conn, parse_dates=colunas_datas)
             # Replace NaN values with None
             record = record.where(pd.notnull(record), None)
-            # Converter o DataFrame em um dicionário
-            record_dict = record.to_dict(orient='records')
+            # Converter o DataFrame em uma lista de dicionários
+            record_dict_list = record.to_dict(orient='records')
          
         except Exception as e:
             print("Erro:", str(e))
             cursor.close()
             raise HTTPException(status_code=500, detail="Erro ao consultar o banco de dados.")
         else:
-            new_record_dict = {}
-            for r in range(len(record_dict)):
-                new_record_dict[record_dict[r]["CodigoUsuario"]] = record_dict[r]
+            new_record_dict_list = []
+            for record_dict in record_dict_list:
+                new_record_dict = {}
+                for key, value in record_dict.items():
+                    if isinstance(value, (float, np.floating)) and np.isnan(value):
+                        new_record_dict[key] = None
+                    elif isinstance(value, pd.Timestamp) and pd.isna(value):
+                        new_record_dict[key] = None
+                    else:
+                        new_record_dict[key] = value
+                new_record_dict_list.append(new_record_dict)
                     
-            if bool(new_record_dict):
-                return new_record_dict
+            if bool(new_record_dict_list):
+                return new_record_dict_list
             else:
                 return None
-
+            
 @app.get("/Usuarios/{CodigoUsuario}")
 def get_User_CodigoUsuario(CodigoUsuario: int):
     conn = get_conn()
