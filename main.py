@@ -2,7 +2,7 @@ import os
 import pyodbc
 from fastapi import FastAPI, HTTPException
 import uvicorn
-from models.Usuarios import UpdateUsuarios, Usuarios
+from models.Usuarios import UpdateUsuarios
 from http import HTTPStatus
 import pandas as pd
 import numpy as np
@@ -22,8 +22,8 @@ def get_conn():
         print("Erro ao conectar ao banco de dados 01:", e)
         return None
 
-@app.get("/UsuariosAll", status_code=HTTPStatus.OK, tags=["Usuários"])
-def get_All_Usuarios():
+@app.get("/all", status_code=HTTPStatus.OK, tags=["Usuário"])
+def get_usuario_all():
     conn = get_conn()
     if conn is None:
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco de dados 02.")
@@ -67,8 +67,8 @@ def get_All_Usuarios():
             else:
                 return None
             
-@app.get("/Usuarios/{CodigoUsuario}", status_code=HTTPStatus.OK, tags=["Usuários"])
-def get_User_CodigoUsuario(CodigoUsuario: int):
+@app.get("/Usuario/{CodigoUsuario}", status_code=HTTPStatus.OK, tags=["Usuário"])
+def get_usuario_Codigo_Usuario(CodigoUsuario: int):
     try:
         conn = get_conn()
         if conn is None:
@@ -109,36 +109,8 @@ def get_User_CodigoUsuario(CodigoUsuario: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao obter usuário do banco de dados: {str(e)}")
 
-@app.post("/Usuarios_post", status_code=HTTPStatus.CREATED, tags=["Usuários"])
-def create_user(usuario: Usuarios):
-    conn = get_conn()
-    if conn is None:
-        raise HTTPException(status_code=500, detail="Erro ao conectar ao banco de dados.")
-    
-    try:
-        cursor = conn.cursor()
-        usuario_dict = usuario.dict()
-        usuario_dict = {k: (None if pd.isna(v) else v) for k, v in usuario_dict.items()}
-        
-        cursor.execute("""
-            INSERT INTO Usuario (CodigoEmpresa, NomeUsuario, Apelido, Password, CPF, Email, Telefone, Celular, Ativo, CodigoGrupoUsuario, InseridoPor, InseridoEm, ModificadoPor, ModificadoEm) 
-            VALUES (?, dbo.fn_Criptografa(?), dbo.fn_Criptografa(?), dbo.fn_Criptografa(?), dbo.fn_Criptografa(?), dbo.fn_Criptografa(?), dbo.fn_Criptografa(?), dbo.fn_Criptografa(?), ?, ?, ?, ?, ?, ?)
-        """, usuario_dict["CodigoEmpresa"], usuario_dict["NomeUsuario"], usuario_dict["Apelido"], usuario_dict["Password"], 
-             usuario_dict["CPF"], usuario_dict["Email"], usuario_dict["Telefone"], usuario_dict["Celular"], 
-             usuario_dict["Ativo"], usuario_dict["CodigoGrupoUsuario"], usuario_dict["InseridoPor"], 
-             usuario_dict["InseridoEm"], usuario_dict["ModificadoPor"], usuario_dict["ModificadoEm"])
-        conn.commit()
-    except Exception as e:
-        print("Erro:", str(e))
-        conn.rollback()
-        raise HTTPException(status_code=500, detail="Erro ao inserir usuário no banco de dados.")
-    finally:
-        conn.close()
-    
-    return {"message": "Usuário criado com sucesso!"}
-
-@app.put("/Usuarios/{CodigoUsuario}", status_code=HTTPStatus.OK, tags=["Usuários"])
-def update_user(CodigoUsuario: int, usuario: UpdateUsuarios):
+@app.put("/Usuario/{CodigoUsuario}", status_code=HTTPStatus.OK, tags=["Usuário"])
+def usuario_put(CodigoUsuario: int, usuario: UpdateUsuarios):
     conn = get_conn()
     if conn is None:
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco de dados.")
@@ -160,15 +132,41 @@ def update_user(CodigoUsuario: int, usuario: UpdateUsuarios):
             raise HTTPException(status_code=404, detail="Usuário não encontrado.")
         
         usuario_dict = usuario.dict(exclude_unset=True)
-        usuario_dict = {k: (None if pd.isna(v) else v) for k, v in usuario_dict.items()}
         
         encrypt_columns = ["NomeUsuario", "Apelido", "Password", "CPF", "Email", "Telefone", "Celular"]
-        for column in encrypt_columns:
-            if column in usuario_dict and usuario_dict[column] is not None:
-                usuario_dict[column] = f"dbo.fn_Criptografa('{usuario_dict[column]}')"
+        set_clauses = []
+        params = []
         
-        set_clause = ", ".join(f"{key} = {value}" if key in encrypt_columns and value is not None else f"{key} = ?" for key, value in usuario_dict.items())
-        params = [value for key, value in usuario_dict.items() if key not in encrypt_columns or value is None]
+        current_user = {
+            "CodigoEmpresa": existing_user.CodigoEmpresa,
+            "NomeUsuario": existing_user.NomeUsuario,
+            "Apelido": existing_user.Apelido,
+            "Password": existing_user.Password,
+            "CPF": existing_user.CPF,
+            "Email": existing_user.Email,
+            "Telefone": existing_user.Telefone,
+            "Celular": existing_user.Celular,
+            "Ativo": existing_user.Ativo,
+            "CodigoGrupoUsuario": existing_user.CodigoGrupoUsuario,
+            "ModificadoPor": existing_user.ModificadoPor,
+            "ModificadoEm": existing_user.ModificadoEm
+        }
+        
+        for key, value in usuario_dict.items():
+            if key in encrypt_columns:
+                decrypted_value = current_user[key]
+                if decrypted_value != value:
+                    set_clauses.append(f"{key} = dbo.fn_Criptografa(?)")
+                    params.append(value)
+            else:
+                if current_user[key] != value:
+                    set_clauses.append(f"{key} = ?")
+                    params.append(value)
+
+        if not set_clauses:
+            raise HTTPException(status_code=400, detail="Nenhum campo válido fornecido para atualização.")
+        
+        set_clause = ", ".join(set_clauses)
         params.append(CodigoUsuario)
         
         cursor.execute(f"""
@@ -199,21 +197,21 @@ def update_user(CodigoUsuario: int, usuario: UpdateUsuarios):
 
     return updated_user
 
-@app.delete("/Usuarios/{CodigoUsuario}", status_code=HTTPStatus.OK, tags=["Usuários"])
-def delete_user(CodigoUsuario: int):
+@app.delete("/Usuario/{ModificadoPor}/{CodigoUsuario}", status_code=HTTPStatus.OK, tags=["Usuário"])
+def usuario_delete(ModificadoPor:int, CodigoUsuario: int):
     conn = get_conn()
     if conn is None:
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco de dados.")
     
     try:
         cursor = conn.cursor()
-        cursor.execute("""SELECT CodigoUsuario FROM Usuario WITH(NOLOCK) WHERE CodigoUsuario = ? """, CodigoUsuario)
+        cursor.execute("SELECT CodigoUsuario FROM Usuario WHERE CodigoUsuario = ?", CodigoUsuario)
         existing_user = cursor.fetchone()
         
         if not existing_user:
             raise HTTPException(status_code=404, detail="Usuário não encontrado.")
         
-        cursor.execute("""UPDATE Usuario SET Ativo = 0, ModificadoPor = 0, ModificadoEm = GETDATE() WHERE CodigoUsuario = ? """, CodigoUsuario)
+        cursor.execute("UPDATE Usuario SET Ativo = 0, ModificadoPor = ?, ModificadoEm = GETDATE() WHERE CodigoUsuario = ?", ModificadoPor, CodigoUsuario)
         conn.commit()
     except Exception as e:
         print("Erro:", str(e))
