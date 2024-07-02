@@ -1,5 +1,4 @@
-import pandas as pd
-from pydantic import BaseModel, conint, constr, validator, Field
+from pydantic import BaseModel, conint, constr, validator
 from typing import Optional
 from datetime import datetime
 
@@ -28,25 +27,25 @@ class Usuarios(BaseModel):
             raise ValueError("CPF deve conter exatamente 11 dígitos.")
         return value
 
-class UpdateUsuarios(BaseModel):
-    CodigoEmpresa       : Optional[conint(ge=1)] # type: ignore
-    NomeUsuario         : Optional[constr(strip_whitespace=True, min_length=1, max_length=255)] # type: ignore
-    Apelido             : Optional[constr(strip_whitespace=True, min_length=1, max_length=40)] # type: ignore
-    Password            : Optional[constr(strip_whitespace=True, min_length=6, max_length=14)] # type: ignore
-    CPF                 : Optional[constr(strip_whitespace=True, min_length=11, max_length=11)] # type: ignore
-    Email               : Optional[constr(strip_whitespace=True, max_length=80)] # type: ignore
-    Telefone            : Optional[constr(strip_whitespace=True, min_length=10, max_length=10)] = None # type: ignore
-    Celular             : Optional[constr(strip_whitespace=True, min_length=11, max_length=11)] # type: ignore
-    Ativo               : Optional[bool]
-    CodigoGrupoUsuario  : Optional[conint(ge=1)] # type: ignore
-    ModificadoPor       : conint(ge=1) # type: ignore
-    ModificadoEm        : datetime
+# class UpdateUsuarios(BaseModel):
+#     CodigoEmpresa       : Optional[conint(ge=1)] # type: ignore
+#     NomeUsuario         : Optional[constr(strip_whitespace=True, min_length=1, max_length=255)] # type: ignore
+#     Apelido             : Optional[constr(strip_whitespace=True, min_length=1, max_length=40)] # type: ignore
+#     Password            : Optional[constr(strip_whitespace=True, min_length=6, max_length=14)] # type: ignore
+#     CPF                 : Optional[constr(strip_whitespace=True, min_length=11, max_length=11)] # type: ignore
+#     Email               : Optional[constr(strip_whitespace=True, max_length=80)] # type: ignore
+#     Telefone            : Optional[constr(strip_whitespace=True, min_length=10, max_length=10)] = None # type: ignore
+#     Celular             : Optional[constr(strip_whitespace=True, min_length=11, max_length=11)] # type: ignore
+#     Ativo               : Optional[bool]
+#     CodigoGrupoUsuario  : Optional[conint(ge=1)] # type: ignore
+#     ModificadoPor       : conint(ge=1) # type: ignore
+#     ModificadoEm        : datetime
 
-    class Config:
-        orm_mode = True
+#     class Config:
+#         orm_mode = True
 
-    @validator("CPF", always=True)
-    def validate_cpf(cls, value):
-        if value and (not value.isdigit() or len(value) != 11):
-            raise ValueError("CPF deve conter exatamente 11 dígitos.")
-        return value
+#     @validator("CPF", always=True)
+#     def validate_cpf(cls, value):
+#         if value and (not value.isdigit() or len(value) != 11):
+#             raise ValueError("CPF deve conter exatamente 11 dígitos.")
+#         return value

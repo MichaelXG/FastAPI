@@ -2,7 +2,7 @@ import os
 import pyodbc
 from fastapi import FastAPI, HTTPException
 import uvicorn
-from models.Usuarios import UpdateUsuarios
+from models.Usuarios import Usuarios
 from http import HTTPStatus
 import pandas as pd
 import numpy as np
@@ -22,7 +22,7 @@ def get_conn():
         print("Erro ao conectar ao banco de dados 01:", e)
         return None
 
-@app.get("/all", status_code=HTTPStatus.OK, tags=["Usuário"])
+@app.get("/all", status_code=HTTPStatus.OK, tags=["Usuário"], description=" Listar todos os Usuários cadastrados", name="Lista todos os Usuários")
 def get_usuario_all():
     conn = get_conn()
     if conn is None:
@@ -67,8 +67,8 @@ def get_usuario_all():
             else:
                 return None
             
-@app.get("/Usuario/{CodigoUsuario}", status_code=HTTPStatus.OK, tags=["Usuário"])
-def get_usuario_Codigo_Usuario(CodigoUsuario: int):
+@app.get("/Usuario/{CodigoUsuario}", status_code=HTTPStatus.OK, tags=["Usuário"], description="Listar todos os Usuários cadastrados pelo CodigoUsuario", name="Lista todos os usuários pelo CodigoUsuario")
+def get_usuario_Codigo_Usuario(CodigoUsuario: int) -> dict:
     try:
         conn = get_conn()
         if conn is None:
@@ -109,8 +109,25 @@ def get_usuario_Codigo_Usuario(CodigoUsuario: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao obter usuário do banco de dados: {str(e)}")
 
-@app.put("/Usuario/{CodigoUsuario}", status_code=HTTPStatus.OK, tags=["Usuário"])
-def usuario_put(CodigoUsuario: int, usuario: UpdateUsuarios):
+@app.post("/Usuarios", status_code=HTTPStatus.CREATED,  tags=["Usuário"], description="inserir um novo Usuários", name="INSERT Usuários")
+def create_User(usuario: Usuarios):
+    with get_conn() as conn:
+        try:
+            cursor = conn.cursor()
+            cursor.execute(f"INSERT INTO Usuario (CodigoEmpresa, NomeUsuario, Apelido, Password, CPF, Email, Telefone, Celular, Ativo, CodigoGrupoUsuario, InseridoPor, InseridoEm, ModificadoPor, ModificadoEm) \
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", usuario.CodigoEmpresa, usuario.NomeUsuario, usuario.Apelido, usuario.Password, usuario.CPF, usuario.Email, usuario.Telefone, usuario.Celular, usuario.Ativo, usuario.CodigoGrupoUsuario, usuario.InseridoPor, usuario.InseridoEm, None, None)
+        except Exception as e:
+            print("Erro:", str(e))
+            cursor.rollback()
+            cursor.close()
+            return False
+        else:
+            conn.commit()
+
+    return True
+
+@app.put("/Usuario/{CodigoUsuario}", status_code=HTTPStatus.OK, tags=["Usuário"], description="Alterar um Usuários cadastrados", name="UPDATE Usuários")
+def usuario_put(CodigoUsuario: int, usuario: Usuarios) :
     conn = get_conn()
     if conn is None:
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco de dados.")
@@ -197,7 +214,7 @@ def usuario_put(CodigoUsuario: int, usuario: UpdateUsuarios):
 
     return updated_user
 
-@app.delete("/Usuario/{ModificadoPor}/{CodigoUsuario}", status_code=HTTPStatus.OK, tags=["Usuário"])
+@app.delete("/Usuario/{ModificadoPor}/{CodigoUsuario}", status_code=HTTPStatus.OK, tags=["Usuário"], description="Inativar um Usuários cadastrados", name="DELETE Usuários")
 def usuario_delete(ModificadoPor:int, CodigoUsuario: int):
     conn = get_conn()
     if conn is None:
