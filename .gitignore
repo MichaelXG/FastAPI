@@ -7,3 +7,5 @@
 /__pycache__
 /Controllers/__pycache__
 /.vs
+/.vscode
+/services/__pycache__/database.cpython-312.pyc
