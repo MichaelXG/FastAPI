@@ -15,3 +15,9 @@ class PadraoDAO():
             else:
                 cleaned_data[key] = value
         return cleaned_data
+
+
+# Função para obter Usuarios do banco de dados
+async def get_items(db: AsyncSession):
+    result = await db.execute(select(ItemModel))
+    return result.scalars().all()
